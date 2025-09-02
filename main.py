@@ -3,7 +3,7 @@ from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 import json
-from enum import Enum
+from enum import  StrEnum
 from typing import AsyncGenerator, Dict
 import threading
 from queue import Queue  # 线程安全的队列
@@ -22,7 +22,7 @@ app.add_middleware(
 
 
 # 定义事件状态枚举
-class Status(str, Enum):
+class Status(StrEnum):
     START = "start"
     PROGRESS = "progress"
     COMPLETE = "complete"
@@ -77,7 +77,7 @@ async def event_generator(input_param: str) -> AsyncGenerator[str, None]:
         # 发送初始连接事件
         yield format_sse(
             data={"message": "已连接，开始处理请求"},
-            event=Status.START.value
+            event=Status.START.value()
         )
 
         # 持续从队列读取消息
