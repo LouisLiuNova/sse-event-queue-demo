@@ -1,5 +1,5 @@
-from fastapi import FastAPI
-from fastapi.responses import StreamingResponse
+from fastapi import FastAPI,HTTPException
+from fastapi.responses import StreamingResponse,FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 import json
@@ -8,7 +8,9 @@ from typing import AsyncGenerator, Dict
 import threading
 from queue import Queue  # 线程安全的队列
 from submodule import blocking_main  # 导入阻塞的子模块主函数
+from pathlib import Path
 import uvicorn
+
 app = FastAPI(title="FastAPI SSE with Blocking Submodule")
 
 # 允许跨域
@@ -114,7 +116,32 @@ async def stream_data(input_param: str) -> StreamingResponse:
         event_generator(input_param),
         media_type="text/event-stream"
     )
+@app.get("/download/{file_path:path}", response_class=FileResponse)
+async def download_file(file_path: Path) -> FileResponse:
 
+    # Security check
+    allowed_file_path = Path("./files").resolve()
+    full_path = allowed_file_path.joinpath(file_path).resolve()
+    try:
+        if not full_path.relative_to(allowed_file_path):
+            raise ValueError("File path is outside the allowed directory")
+    except ValueError as e:
+        raise HTTPException(status_code=403, detail=e)
+
+    # Check if file exists
+    try:
+        if not full_path.is_file():
+            raise FileNotFoundError("File not found")
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=e)
+
+    # Check if is a directory
+    try:
+        if full_path.is_dir():
+            raise IsADirectoryError("Path is a directory, not a file")
+    except IsADirectoryError as e:
+        raise HTTPException(status_code=400, detail=e)
+    return FileResponse(full_path, media_type='application/octet-stream', filename=full_path.name)
 
 if __name__ == "__main__":
 
